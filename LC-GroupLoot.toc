@@ -1,9 +1,9 @@
 ## Interface: 90005
-## Title: LC Autopass
+## Title: LC GroupLoot
 ## Author: Magnificum
 ## Version: 1.0
 ## APIVersion: 90005
-## SavedVariables: LCAutopassDB
+## SavedVariables: LCGroupLootDB
 
 Libs\LibStub\LibStub.lua
 Libs\AceGUI-3.0\AceGUI-3.0.xml

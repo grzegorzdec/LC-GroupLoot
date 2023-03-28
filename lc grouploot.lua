@@ -10,11 +10,14 @@ local AceComm = LibStub("AceComm-3.0")
 local AceDB = LibStub("AceDB-3.0")
 local AceDBOptions = LibStub("AceDBOptions-3.0")
 
+local UIConfig
+
 local Serialize, Deserialize = AceSerializer.Serialize, AceSerializer.Deserialize
 
 local defaults = {
     profile = {
 		enable = false,
+		lc = "",
         lootTable = {
         },
     }
@@ -98,11 +101,200 @@ local bossy = {
 		45445,
 		45443,
 		45442
+	},
+	["The Iron Council"] = {
+		45224,
+		45240,
+		45238,
+		45237,
+		45232,
+		45227,
+		45239,
+		45226,
+		45225,		
+		45228,
+		45139,
+		45236,
+		45235,
+		45233,
+		45234,
+		45242,
+		45245,
+		45244,
+		45241,
+		45243,
+		45607,
+		
+	},
+	["Kologarn"] = {
+		45272,
+		45275,
+		45273,
+		45265,
+		45274,
+		45264,
+		45269,
+		45268,
+		45267,
+		45262,
+		45263,
+		45271,
+		45270,
+		45266,
+		45261,
+	
+	},
+	["Algalon the Observer"] = {
+		45665,
+		45619,
+		45611,
+		45616,
+		45610,
+		45615,
+		45594,
+		45599,
+		45609,
+		45620,
+		45607,
+		45612,
+		45613,
+		45587,
+		45570,
+		45617,
+		46053
+	},
+	["Auriaya"] = {
+		45319,
+		45435,
+		45441,
+		45439,
+		45352,
+		45440,
+		45320,
+		45334,
+		45434,
+		45326,
+		45438,
+		45436,
+		45437,
+		45315,
+		45227,
+	},
+	["Hodir"] = {
+		45453,
+		45454,
+		45452,
+		45451,
+		45450,
+		45461,
+		45462,
+		45460,
+		45459,
+		45612,
+		45457,
+		45632,
+		45633,
+		45634,
+	},
+	["Thorim"] = {
+		45468,
+		45467,
+		45469,
+		45466,
+		45463,
+		45473,
+		45474,
+		45472,
+		45471,
+		45570,
+		45470,
+		45638,
+		45639,
+		45640,
+	},
+	["Freya"] = {
+		45483,
+		45482,
+		45481,
+		45480,
+		45479,
+		45486,
+		45488,
+		45487,
+		45485,
+		45484,
+		45613,
+		45653,
+		45654,
+		45655,
+	},
+	["Mimiron"] = {
+		45493,
+		45492,
+		45491,
+		45490,
+		45489,
+		45496,
+		45497,
+		45663,
+		45495,
+		45494,
+		45620,
+		45641,
+		45642,
+		45643,
+	},
+	["General Vezax"] = {
+		45514,
+		45508,
+		45512,
+		45504,
+		45513,
+		45502,
+		45505,
+		45501,
+		45503,
+		45515,
+		45507,
+		45509,
+		45145,
+		45498,
+		45511,
+		45520,
+		45519,
+		45517,
+		45518,
+		45516,
+	},
+	["Yogg-Saron"] = {
+		45529,
+		45532,
+		45523,
+		45524,
+		45531,
+		45525,
+		45530,
+		45522,
+		45527,
+		45521,
+		45656,
+		45657,
+		45658,
+		45537,
+		45536,
+		45534,
+		45535,
+		45533,
+		45693,
+	},
+	["Trash and Quest"] = {
+		53038,
+		
 	}
 }
 
 local options = {
-  name = "LC AutoPass",
+  name = "LC GroupLoot",
   handler = LCGroupLoot,
 }
 
@@ -112,15 +304,20 @@ local lootTable = {
 
 function LCGroupLoot:OnInitialize() 
 	self.db = AceDB:New("LCGroupLootDB", defaults, true)
+
 	--local options = AceDBOptions:GetOptionsTable(db)
 	--AceConfig:RegisterOptionsTable("LCGroupLoot", options)
 	-- Rejestracja funkcji obsługi wiadomości w AceComm
 	AceComm:RegisterComm("LCGroupLootComm", function(prefix, message, distribution, sender)
 		LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
+	end)	
+	
+	AceEvent:RegisterEvent("START_LOOT_ROLL", function(event, rollId, lootTime)
+		print("roll id" .. rollId .. " " .. lootTime)
+		LCGroupLoot:AutoPassOnLoot(rollId)
 	end)
 	
 	lootTable = self.db.profile.lootTable
-	tprint(lootTable,2)
 end
 
 function LCGroupLoot:OnEnable()
@@ -131,7 +328,7 @@ function LCGroupLoot:OnEnable()
 end
 
 -- Tworzymy funkcję do sprawdzania, czy przedmiot znajduje się w tabeli łupu
-local function IsItemInLootTable(itemID)
+function LCGroupLoot:IsItemInLootTable(itemID)
     return self.db.profile.lootTable[itemID] == true
 end
 
@@ -140,40 +337,40 @@ function LCGroupLoot:SetLootTableValue(itemID, value)
     db.profile.lootTable[itemID] = value
 end
 
-function LCGroupLoot:IsPlayerRaidLeaderOrMasterLooter()
+function LCGroupLoot:IsPlayerRaidLeader()
     local playerName = UnitName("player")
-    local raidLeaderName, masterLooterName
+    local raidLeaderName
 
     for i = 1, 40 do
         local name, rank = GetRaidRosterInfo(i)
         if rank == 2 then
             raidLeaderName = name
         end
-        local lootMethod, _, masterLooterRaidID = GetLootMethod()
-        if lootMethod == "master" and i == masterLooterRaidID then
-            masterLooterName = name
-        end
-        if playerName == raidLeaderName or playerName == masterLooterName then
+        
+        if playerName == raidLeaderName then
             return true
         end
     end
 
-    return false
+    return true
 end
 
-function LCGroupLoot:AutoPassOnLoot()
-    for i = 1, GetNumLootItems() do
-        local itemLink = GetLootSlotLink(i)
-        local itemID = tonumber(itemLink:match("item:(%d+)"))
-
-        if IsItemInLootTable(itemID) then
-            if IsPlayerRaidLeaderOrMasterLooter() then
-                LootSlot(i) -- Wybiera "Need"
-            else
-                ConfirmLootSlot(i) -- Wybiera "Pass"
-            end
-        end
-    end
+function LCGroupLoot:AutoPassOnLoot(rollId)
+	print("AutoPassOnLoot")
+	--RollOnLoot(rollId, 0)
+    local _, itemName, _, _ = GetLootRollItemInfo(rollId)
+    local _, itemLink, _, _, _, _, _, _, _, _, _ = GetItemInfo(itemName)
+	local itemID = itemLink.itemID
+	if IsItemInLootTable(itemID) then
+		--if playerName == LC then
+		if LCGroupLoot:IsPlayerRaidLeader() then
+			print(itemLink .. " true - need")
+			RollOnLoot(rollId, 1) -- "Need"
+		else
+			RollOnLoot(rollId, 0) -- "Pass"
+			print(itemLink .. " true - pass")
+		end
+	end
 end
 
 function LCGroupLoot:AreAllItemInfosAvailable()
@@ -196,18 +393,21 @@ end
 
 function LCGroupLoot:CreateItemRow(itemId)
 	local itemIdNumber = tonumber(itemId)
+	print(itemIdNumber)
 	local itemName, itemLink, _, itemLevel, _, _, _, _, _, itemTexture = GetItemInfo(itemIdNumber)
-		
+
 	local itemGroup = AceGUI:Create("SimpleGroup")
 	itemGroup:SetLayout("Flow")
 	itemGroup:SetFullWidth(true)
-	itemGroup.frame:SetBackdrop(nil)
+
+	--itemGroup.frame:SetBackdrop(nil)
 
 	local itemIcon = AceGUI:Create("Icon")
 	itemIcon:SetImage(itemTexture)
-	itemIcon:SetImageSize(20, 20)
-	itemIcon:SetWidth(20)
-	itemIcon:SetHeight(20)
+	itemIcon:SetImageSize(25, 25)
+	itemIcon:SetWidth(25)
+	itemIcon:SetHeight(25)
+	itemIcon:SetPoint("Left", UIParent, "Left", 10, -10)
 	itemIcon:SetCallback("OnEnter", function()
 		LCGroupLoot:ShowTooltip(itemIdNumber)
 	end)
@@ -219,13 +419,13 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemLabel:SetText(itemLink)
 	itemLabel:SetFontObject(GameFontHighlight)
 	itemLabel:SetJustifyH("LEFT")
-	itemLabel:SetWidth(180)
-
-	local ilvlLabel = AceGUI:Create("Label")
-	ilvlLabel:SetText("["..itemLevel.."]")
-	ilvlLabel:SetFontObject(GameFontHighlight)
-	ilvlLabel:SetJustifyH("LEFT")
-	ilvlLabel:SetWidth(30)
+	itemLabel:SetWidth(230)
+	
+	-- local ilvlLabel = AceGUI:Create("Label")
+	-- ilvlLabel:SetText("["..itemLevel.."]")
+	-- ilvlLabel:SetFontObject(GameFontHighlight)
+	-- ilvlLabel:SetJustifyH("LEFT")
+	-- ilvlLabel:SetWidth(30)
 
 	local checked = lootTable[itemIdNumber]
 	
@@ -240,14 +440,14 @@ function LCGroupLoot:CreateItemRow(itemId)
 		lootTable[itemIdNumber] = value
 	end)
 
-	if LCGroupLoot:IsPlayerRaidLeaderOrMasterLooter() then
+	if LCGroupLoot:IsPlayerRaidLeader() then
 		itemCheckbox:SetDisabled(false)
 	else
 		itemCheckbox:SetDisabled(true)
 	end
 	
 	itemGroup:AddChild(itemIcon)
-	itemGroup:AddChild(ilvlLabel)
+	--itemGroup:AddChild(ilvlLabel)
 	itemGroup:AddChild(itemLabel)
 	itemGroup:AddChild(itemCheckbox)
 
@@ -260,14 +460,20 @@ function LCGroupLoot:SendLootTableUpdate()
 	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
 end
 
+function LCGroupLoot:SendLCUpdate()
+    local message = "LC_UPDATE:" .. AceSerializer:Serialize(self.db.profile.LC)
+	print(message)
+	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
+end
+
 function LCGroupLoot:CreateLCGroupLootUI()
-    local frame = AceGUI:Create("Frame")
-    frame:SetTitle("LC Autopass")
-    frame:SetStatusText("Lista przedmiotów do automatycznego rozdawania")
-    frame:SetLayout("Flow")
+    UIConfig = AceGUI:Create("Frame")
+    UIConfig:SetTitle("LC GroupLoot")
+    UIConfig:SetLayout("Flow")
+	UIConfig:SetWidth(600)
 
     -- lista zakładek
-	local tabs = {}
+	local tabs = {} 
 	for bossName, items in pairs(bossy) do
 		table.insert(tabs, {text = bossName, value = bossName})
 	end
@@ -284,23 +490,38 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	saveSettingsButton:SetWidth(150)
 	saveSettingsButton:SetCallback("OnClick", function()
 		self.db.profile.lootTable = lootTable
-		print("Ustawienia zostały zapisane.")
-		tprint(lootTable,2)
-		print("db: ")
-		tprint(lootTable,2)
+		--tprint(lootTable,2)
+	end)
+	
+	local masteLooterLabel = AceGUI:Create("Label")
+	masteLooterLabel:SetText("LC:")
+	masteLooterLabel:SetFontObject(GameFontHighlight)
+	masteLooterLabel:SetJustifyH("Right")
+	masteLooterLabel:SetWidth(50)
+	
+	local masterLooterET = AceGUI:Create("EditBox")
+	masterLooterET:SetWidth(150)
+	masterLooterET:SetText(self.db.profile.lc)
+	masterLooterET:SetCallback("OnTextChanged", function(widget, event, text)
+		self.db.profile.lc = text
 	end)
 
-	if LCGroupLoot:IsPlayerRaidLeaderOrMasterLooter() then
+	if LCGroupLoot:IsPlayerRaidLeader() then
 		sendUpdateButton:SetDisabled(false)
 		saveSettingsButton:SetDisabled(false)
+		masterLooterET:SetDisabled(true)
 	else
 		sendUpdateButton:SetDisabled(true)
 		saveSettingsButton:SetDisabled(true)
+		masterLooterET:SetDisabled(true)
 	end
 	
 
-	frame:AddChild(sendUpdateButton)
-	frame:AddChild(saveSettingsButton)
+	UIConfig:AddChild(sendUpdateButton)
+	UIConfig:AddChild(saveSettingsButton)
+	UIConfig:AddChild(masteLooterLabel)
+	UIConfig:AddChild(masterLooterET)
+
 	
 	-- Tworzymy zakładki
 	local tabGroup = AceGUI:Create("TabGroup")
@@ -309,121 +530,34 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	tabGroup:SetFullWidth(true)
 	tabGroup:SetFullHeight(true)
 	tabGroup:SetCallback("OnGroupSelected", function(widget, event, group)
+		local items = bossy[group]
 		widget:ReleaseChildren()
-		
-		local itemList = AceGUI:Create("SimpleGroup")
-		itemList:SetLayout("List")
-		itemList:SetFullWidth(true)
-		itemList.frame:SetBackdrop(nil)
-		widget:AddChild(itemList)
-		
-		 
-		items = bossy[group]
-		tprint(items,1)
- 
+		--print(group)
+		local tabContent = AceGUI:Create("ScrollFrame")
+		tabContent:SetLayout("List")
+		tabContent:SetFullWidth(true)
 		for i, itemID in ipairs(items) do	
 			local itemRow = LCGroupLoot:CreateItemRow(itemID)
-			itemList:AddChild(itemRow)
-		end			
+			tabContent:AddChild(itemRow)
+		end	
+		widget:AddChild(tabContent)
     end)
 
-	frame:AddChild(tabGroup)
-end
-
-function LCGroupLoot:test(widget, group) 
-			local itemLabel = AceGUI:Create("Label")
-			itemLabel:SetText(group)
-			itemLabel:SetFontObject(GameFontHighlight)
-			itemLabel:SetJustifyH("LEFT")
-			itemLabel:SetWidth(300)
-        tabGroup:AddChild(itemLabel)
-end
-
-function LCGroupLoot:fireGroup(widget, group) 
-    print(widget)
-	print(event)
-	print(group)
-
-	for bossName, items in pairs(bossy) do
-		local itemGroup = AceGUI:Create("SimpleGroup")
-		itemGroup:SetLayout("Flow")
-		itemGroup:SetFullWidth(true)
-		tprint(items,1)
-
-		for i, itemID in ipairs(items) do	
-			local itemName, itemLink, _, itemLevel, _, _, _, _, _, itemTexture = GetItemInfo(itemID)
-
-			local itemIcon = AceGUI:Create("Icon")
-			itemIcon:SetImage(itemTexture)
-			itemIcon:SetImageSize(40, 40)
-			itemIcon:SetWidth(40)
-			itemIcon:SetHeight(40)
-			itemIcon:SetCallback("OnEnter", function()
-				LCGroupLoot:ShowTooltip(itemID)
-			end)
-			itemIcon:SetCallback("OnLeave", function()
-				GameTooltip:Hide()
-			end)
-
-			local itemLabel = AceGUI:Create("Label")
-			itemLabel:SetText(itemLink)
-			itemLabel:SetFontObject(GameFontHighlight)
-			itemLabel:SetJustifyH("LEFT")
-			itemLabel:SetWidth(300)
-
-			local ilvlLabel = AceGUI:Create("Label")
-			ilvlLabel:SetText(itemLevel)
-			ilvlLabel:SetFontObject(GameFontHighlight)
-			ilvlLabel:SetJustifyH("LEFT")
-			ilvlLabel:SetWidth(300)
-
-			local checked = lootTable[itemID]
-			
-			if(checked == nil) then
-				checked = false
-			end
-
-			local itemCheckbox = AceGUI:Create("CheckBox")
-			itemCheckbox:SetLabel("LC")
-			itemCheckbox:SetValue(checked)
-			itemCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
-				lootTable[itemID] = value
-			end)
-
-			if LCGroupLoot:IsPlayerRaidLeaderOrMasterLooter() then
-				itemCheckbox:SetDisabled(false)
-			else
-				itemCheckbox:SetDisabled(true)
-			end
-			
-			print("aaaa")
-
-			itemGroup:AddChild(itemIcon)
-			print("bbb")
-			itemGroup:AddChild(ilvlLabel)
-			print("ccc")
-			itemGroup:AddChild(itemLabel)
-			print("ddd")
-			itemGroup:AddChild(itemCheckbox)
-			print("eee")
-			
-			frame:AddChild(itemGroup)
-		end
-	end
-	
+	UIConfig:AddChild(tabGroup)
+	tabGroup:SelectTab(1)
 end
 
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
     local _, _, encodedData = string.find(message, "LCGroupLoot_UPDATE:(.+)")
     local success, newLootTable = AceSerializer:Deserialize(encodedData)
-	print("HandleLootTableUpdate ")
+	--print("HandleLootTableUpdate ")
     if success then
-		print("new loot table")
-		tprint(newLootTable)
+		--print("new loot table")
+		--tprint(newLootTable)
         lootTable = newLootTable
         self.db.profile.lootTable = lootTable
-		print("Ustawienia zostały pobrane.")
-		tprint(lootTable,2)
+		--print("Ustawienia zostały pobrane.")
+		--tprint(lootTable,2)
     end
 end
 
@@ -432,6 +566,7 @@ function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
     if event == "CHAT_MSG_ADDON" and prefix == "LCGroupLoot" then
         HandleLootTableUpdate(sender, message)
     end
+
 end
 
 function LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
