@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Create ankiaddon
-        run: zip -r -q LC-GroupLoot.zip Libs/ LC-GroupLoot.toc lc grouploot.lua
+        run: zip -r -q LC-GroupLoot.zip Libs/ LC-GroupLoot.toc 'lc grouploot.lua'
       - uses: actions/upload-artifact@v1
         with:
           name: my-artifact
