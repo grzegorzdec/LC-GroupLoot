@@ -8,10 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: vimtor/action-zip@v1
-        with:
-          files: Libs/ LC-GroupLoot.toc lc grouploot.lua
-          dest: LC-GroupLoot.zip
+      - name: Create ankiaddon
+        run: zip -r -q LC-GroupLoot.zip Libs/ LC-GroupLoot.toc lc grouploot.lua
       - name: Commit and push
         uses: EndBug/add-and-commit@v7
         with:
