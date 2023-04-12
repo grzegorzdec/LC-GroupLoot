@@ -15,4 +15,4 @@ jobs:
         with:
           add: '["LC-GroupLoot.zip"]'
           message: 'New Version'
-          push: true
+          push: false
