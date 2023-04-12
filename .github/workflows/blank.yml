@@ -8,9 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Create ankiaddon
-        run: zip -r -q LC-GroupLoot.zip Libs/ LC-GroupLoot.toc 'lc grouploot.lua'
+      - name: Create folder
+        run: |
+          mkdir -p LC-GroupLoot && cp -R  Libs/ LC-GroupLoot/Libs && cp LC-GroupLoot.toc LC-GroupLoot/LC-GroupLoot.toc && cp 'lc grouploot.lua' 'LC-GroupLoot/lc grouploot.lua'
+#      - name: Create ankiaddon
+#        run: zip -r -q LC-GroupLoot.zip Libs/ LC-GroupLoot.toc 'lc grouploot.lua'
       - uses: actions/upload-artifact@v1
         with:
           name: LC-GroupLoot
-          path: ${{ github.workspace }}/LC-GroupLoot.zip
+          path: ${{ github.workspace }}/LC-GroupLoot/
