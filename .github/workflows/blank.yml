@@ -12,4 +12,9 @@ jobs:
         with:
           files: Libs/ LC-GroupLoot.toc lc grouploot.lua
           dest: LC-GroupLoot.zip
-
+      - name: Commit and push
+        uses: EndBug/add-and-commit@v7
+        with:
+          add: '["LC-GroupLoot.zip"]'
+          message: 'New Version'
+          push: true
