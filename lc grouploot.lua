@@ -333,7 +333,7 @@ function LCGroupLoot:OnInitialize()
 end
 
 function LCGroupLoot:OnEnable()
-	self:RegisterChatCommand("lca", "SlashProcessor")
+	self:RegisterChatCommand("lcgl", "SlashProcessor")
 	self:RegisterChatCommand("LCGroupLoot", "CreateLCGroupLootUI")
 	--RegisterEvent("CHAT_MSG_ADDON", "OnEvent")
 	--self:SetScript("OnEvent", OnEvent)
