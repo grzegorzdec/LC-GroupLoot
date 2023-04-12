@@ -4,11 +4,12 @@ name: CI
 
 on: [push]
 jobs:
-  To-Zip:
+  zip-files:
     runs-on: ubuntu-latest
     steps:
-      - name: action-zip
-        # You may pin to the exact commit or the version.
-        # uses: montudor/action-zip@0852c26906e00f8a315c704958823928d8018b28
-        uses: montudor/action-zip@v1.0.0
+      - uses: actions/checkout@v2
+      - uses: vimtor/action-zip@v1
+        with:
+          files: Libs/ LC-GroupLoot.toc lc grouploot.lua
+          dest: LC-GroupLoot.zip
 
