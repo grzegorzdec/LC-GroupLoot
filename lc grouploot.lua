@@ -1,7 +1,5 @@
--- Tworzymy nowy addon
 local LCGroupLoot = LibStub("AceAddon-3.0"):NewAddon("LCGroupLoot", "AceConsole-3.0")
 
--- Importujemy niezbędne biblioteki
 local AceGUI = LibStub("AceGUI-3.0")
 local AceSerializer = LibStub("AceSerializer-3.0")
 local AceEvent = LibStub("AceEvent-3.0")
@@ -287,14 +285,29 @@ local bossy = {
 		45533,
 		45693,
 	},
-	["Trash and Quest"] = {
-		53038,
+	-- ["Trash and Quest"] = {
+		-- 45038,
+		-- 43102
+	-- }, 
+	-- ["Custom 10m"] = {
+		-- 45297,
+		-- 45314,
+		-- 45447,
+		-- 46042,
+		-- 46045,
+		-- 46050,
+		-- 46046,
+		-- 45294,
+		-- 45946,
+		-- 46034,
+		-- 46068,
+		-- 46096,
 		
-	}
+	-- }
 }
 
 local options = {
-  name = "LC GroupLoot",
+  name = "LCGroupLoot",
   handler = LCGroupLoot,
 }
 
@@ -313,8 +326,7 @@ function LCGroupLoot:OnInitialize()
 	end)	
 	
 	AceEvent:RegisterEvent("START_LOOT_ROLL", function(event, rollId, lootTime)
-		print("roll id" .. rollId .. " " .. lootTime)
-		LCGroupLoot:AutoPassOnLoot(rollId)
+		LCGroupLoot:RollOnLoot(rollId)
 	end)
 	
 	lootTable = self.db.profile.lootTable
@@ -352,24 +364,39 @@ function LCGroupLoot:IsPlayerRaidLeader()
         end
     end
 
-    return true
+    return false
 end
 
-function LCGroupLoot:AutoPassOnLoot(rollId)
-	print("AutoPassOnLoot")
+function LCGroupLoot:RollOnLoot(rollId)
 	--RollOnLoot(rollId, 0)
-    local _, itemName, _, _ = GetLootRollItemInfo(rollId)
-    local _, itemLink, _, _, _, _, _, _, _, _, _ = GetItemInfo(itemName)
-	local itemID = itemLink.itemID
-	if IsItemInLootTable(itemID) then
+    local itemLink = GetLootRollItemLink(rollId)
+   -- local a, itemLink, b, c, d, e, f, g, h, i, j = GetItemInfo(itemName)
+	--print(itemLink)
+	--local itemId = tonumber(string.sub(itemLink, string.find(itemLink, "item:%d+:%d+:%d+:%d+")):match("%d+"))
+	--  "|cff1eff00|Hitem:36682::::::-8:1301479470:80:::::::::|h[Seduced Blade of the Whale]|h|r"
+--(*tem
+	--local itemId = GetItemInfo(itemLink)
+	local itemString = string.match(itemLink, "item:(%d+)")
+    local itemId = tonumber(itemString)
+
+	--if itemId ~= nil then
+	--	print("Identyfikator przedmiotu " .. itemLink .. " to " .. itemId)
+	--else
+	--	print("Nie znaleziono przedmiotu o nazwie " .. itemLink)
+	--end
+
+	--local itemID = itemLink.itemId
+	if LCGroupLoot:IsItemInLootTable(itemId) then
 		--if playerName == LC then
 		if LCGroupLoot:IsPlayerRaidLeader() then
-			print(itemLink .. " true - need")
+			--print(itemLink .. " - need")
 			RollOnLoot(rollId, 1) -- "Need"
 		else
 			RollOnLoot(rollId, 0) -- "Pass"
-			print(itemLink .. " true - pass")
+			--print(itemLink .. " - pass")
 		end
+	else 
+		--print(itemLink .. " - not in LC table")
 	end
 end
 
@@ -393,7 +420,7 @@ end
 
 function LCGroupLoot:CreateItemRow(itemId)
 	local itemIdNumber = tonumber(itemId)
-	print(itemIdNumber)
+	--print(itemIdNumber)
 	local itemName, itemLink, _, itemLevel, _, _, _, _, _, itemTexture = GetItemInfo(itemIdNumber)
 
 	local itemGroup = AceGUI:Create("SimpleGroup")
@@ -456,13 +483,13 @@ end
 
 function LCGroupLoot:SendLootTableUpdate()
     local message = "LCGroupLoot_UPDATE:" .. AceSerializer:Serialize(lootTable)
-	print(message)
+	--print(message)
 	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
 end
 
 function LCGroupLoot:SendLCUpdate()
     local message = "LC_UPDATE:" .. AceSerializer:Serialize(self.db.profile.LC)
-	print(message)
+	--print(message)
 	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
 end
 
@@ -562,7 +589,7 @@ function LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
 function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
-	self.print("on event")
+	--self.print("on event")
     if event == "CHAT_MSG_ADDON" and prefix == "LCGroupLoot" then
         HandleLootTableUpdate(sender, message)
     end
@@ -570,7 +597,7 @@ function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
 end
 
 function LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
-	print("OnLCGroupLootCommReceived")
+	--print("OnLCGroupLootCommReceived")
 	LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
