@@ -311,7 +311,7 @@ local options = {
   handler = LCGroupLoot,
 }
 
--- Tablica zawierająca listę itemów
+-- Tablica zawierająca listę itemów LC
 local lootTable = {
 }
 
@@ -330,9 +330,6 @@ end
 function LCGroupLoot:OnInitialize() 
 	self.db = AceDB:New("LCGroupLootDB", defaults, true)
 
-	--local options = AceDBOptions:GetOptionsTable(db)
-	--AceConfig:RegisterOptionsTable("LCGroupLoot", options)
-	-- Rejestracja funkcji obsługi wiadomości w AceComm
 	AceComm:RegisterComm("LCGroupLootComm", function(prefix, message, distribution, sender)
 		LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
 	end)	
@@ -349,20 +346,18 @@ end
 function LCGroupLoot:OnEnable()
 	self:RegisterChatCommand("lcgl", "SlashProcessor")
 	self:RegisterChatCommand("LCGroupLoot", "CreateLCGroupLootUI")
-	--RegisterEvent("CHAT_MSG_ADDON", "OnEvent")
-	--self:SetScript("OnEvent", OnEvent)
+
 end
 
--- Tworzymy funkcję do sprawdzania, czy przedmiot znajduje się w tabeli łupu
 function LCGroupLoot:IsItemInLootTable(itemID)
     return self.db.profile.lootTable[itemID] == true
 end
 
--- Tworzymy funkcję do ustawiania wartości przedmiotu w tabeli łupu
 function LCGroupLoot:SetLootTableValue(itemID, value)
     db.profile.lootTable[itemID] = value
 end
 
+--todo: combine below functions
 function LCGroupLoot:IsPlayerRaidLeaderOrML()
     local playerName = UnitName("player")
     local raidLeaderName
@@ -447,34 +442,13 @@ function LCGroupLoot:RollOnLoot(rollId)
 	end
 end
 
-function LCGroupLoot:AreAllItemInfosAvailable()
-    for itemID, _ in pairs(lootTable) do
-        if not GetItemInfo(itemID) then
-            return false
-        end
-    end
-    return true
-end
-
-function LCGroupLoot:TryCreatingLCGroupLootUI()
-    if AreAllItemInfosAvailable() then
-        CreateLCGroupLootUI()
-    else
-        -- Odczekaj 1 sekundę i spróbuj ponownie
-        C_Timer.After(1, TryCreatingLCGroupLootUI)
-    end
-end
-
 function LCGroupLoot:CreateItemRow(itemId)
 	local itemIdNumber = tonumber(itemId)
-	--print(itemIdNumber)
 	local itemName, itemLink, _, itemLevel, _, _, _, _, _, itemTexture = GetItemInfo(itemIdNumber)
 
 	local itemGroup = AceGUI:Create("SimpleGroup")
 	itemGroup:SetLayout("Flow")
 	itemGroup:SetWidth(350)
-
-	--itemGroup.frame:SetBackdrop(nil)
 
 	local itemIcon = AceGUI:Create("Icon")
 	itemIcon:SetImage(itemTexture)
@@ -494,12 +468,6 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemLabel:SetFontObject(GameFontHighlight)
 	itemLabel:SetJustifyH("LEFT")
 	itemLabel:SetWidth(200)
-	
-	-- local ilvlLabel = AceGUI:Create("Label")
-	-- ilvlLabel:SetText("["..itemLevel.."]")
-	-- ilvlLabel:SetFontObject(GameFontHighlight)
-	-- ilvlLabel:SetJustifyH("LEFT")
-	-- ilvlLabel:SetWidth(30)
 
 	local checked = lootTable[itemIdNumber]
 	
@@ -522,7 +490,6 @@ function LCGroupLoot:CreateItemRow(itemId)
 	end
 	
 	itemGroup:AddChild(itemIcon)
-	--itemGroup:AddChild(ilvlLabel)
 	itemGroup:AddChild(itemLabel)
 	itemGroup:AddChild(itemCheckbox)
 
@@ -531,7 +498,6 @@ end
 
 function LCGroupLoot:SendLootTableUpdate()
     local message = "LCGroupLoot_UPDATE:" .. AceSerializer:Serialize(lootTable)
-	--print(message)
 	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
 end
 
@@ -651,7 +617,6 @@ function LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
 function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
-	--self.print("on event")
     if event == "CHAT_MSG_ADDON" and prefix == "LCGroupLoot" then
         HandleLootTableUpdate(sender, message)
     end
@@ -659,7 +624,6 @@ function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
 end
 
 function LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
-	--print("OnLCGroupLootCommReceived")
 	LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
@@ -674,8 +638,6 @@ function LCGroupLoot:ShowTooltip(itemID)
     tooltip:Show()
 end
 
--- Print contents of `tbl`, with indentation.
--- `indent` sets the initial level of indentation.
 function tprint (tbl, indent)
   if not indent then indent = 0 end
   for k, v in pairs(tbl) do
