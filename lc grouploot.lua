@@ -315,6 +315,9 @@ local options = {
 local lootTable = {
 }
 
+local selectedTab = ""
+local tabRef = {}
+
 function LCGroupLoot:PreloadItemLinks()
 	for bossName, items in pairs(bossy) do
 		for i, itemId in ipairs(items) do
@@ -393,7 +396,7 @@ function LCGroupLoot:RollOnLoot(rollId)
 			--print(itemLink .. " - pass")
 		end
 	else 
-		print(itemLink .. " - not in LC table")
+		--print(itemLink .. " - not in LC table")
 	end
 end
 
@@ -422,7 +425,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 
 	local itemGroup = AceGUI:Create("SimpleGroup")
 	itemGroup:SetLayout("Flow")
-	itemGroup:SetFullWidth(true)
+	itemGroup:SetWidth(350)
 
 	--itemGroup.frame:SetBackdrop(nil)
 
@@ -443,7 +446,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemLabel:SetText(itemLink)
 	itemLabel:SetFontObject(GameFontHighlight)
 	itemLabel:SetJustifyH("LEFT")
-	itemLabel:SetWidth(230)
+	itemLabel:SetWidth(200)
 	
 	-- local ilvlLabel = AceGUI:Create("Label")
 	-- ilvlLabel:SetText("["..itemLevel.."]")
@@ -460,6 +463,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 	local itemCheckbox = AceGUI:Create("CheckBox")
 	itemCheckbox:SetLabel("LC")
 	itemCheckbox:SetValue(checked)
+	itemCheckbox:SetWidth(50)
 	itemCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
 		lootTable[itemIdNumber] = value
 	end)
@@ -545,30 +549,61 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	UIConfig:AddChild(saveSettingsButton)
 	UIConfig:AddChild(masteLooterLabel)
 	UIConfig:AddChild(masterLooterET)
-
 	
-	-- Tworzymy zakładki
-	local tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs(tabs)
-	tabGroup:SetLayout("Flow")
-	tabGroup:SetFullWidth(true)
-	tabGroup:SetFullHeight(true)
-	tabGroup:SetCallback("OnGroupSelected", function(widget, event, group)
-		local items = bossy[group]
-		widget:ReleaseChildren()
-		--print(group)
-		local tabContent = AceGUI:Create("ScrollFrame")
-		tabContent:SetLayout("List")
-		tabContent:SetFullWidth(true)
-		for i, itemID in ipairs(items) do	
-			local itemRow = LCGroupLoot:CreateItemRow(itemID)
-			tabContent:AddChild(itemRow)
-		end	
-		widget:AddChild(tabContent)
-    end)
-
-	UIConfig:AddChild(tabGroup)
-	tabGroup:SelectTab(1)
+	local bottomContainer = AceGUI:Create("SimpleGroup")
+	bottomContainer:SetLayout("Flow")
+	bottomContainer:SetFullWidth(true)	
+	bottomContainer:SetFullHeight(true)
+	
+	local lootListFrame = AceGUI:Create("InlineGroup")
+	lootListFrame:SetLayout("Flow")
+	lootListFrame:SetWidth(400)	
+	lootListFrame:SetFullHeight(true)
+	
+	local bossListFrame = AceGUI:Create("InlineGroup")
+	bossListFrame:SetLayout("Flow")
+	bossListFrame:SetWidth(160)	
+	bossListFrame:SetFullHeight(true)
+	
+	local tabList = AceGUI:Create("ScrollFrame")
+	tabList:SetFullWidth(true)
+	tabList:SetLayout("List")
+	for bossName, items in pairs(bossy) do
+		local bossLabel = AceGUI:Create("InteractiveLabel")
+		bossLabel:SetText(bossName)
+		bossLabel:SetFontObject(GameFontHighlightSmall)
+		bossLabel:SetColor(1,1,1)
+		bossLabel:SetJustifyH("Left")
+		bossLabel:SetWidth(150)
+		bossLabel:SetCallback("OnClick", function(widget,event,group)
+			selectedTab = bossName
+			
+			for i, tab in ipairs(tabRef) do 
+				tab:SetColor(1,1,1)
+			end
+			widget:SetColor(0.67,0.83,0.45)
+			lootListFrame:ReleaseChildren()
+			lootListFrame:SetTitle(bossName)
+			local items = bossy[selectedTab]
+			local tabContent = AceGUI:Create("ScrollFrame")
+			tabContent:SetLayout("List")
+			tabContent:SetFullWidth(true)
+			for i, itemID in ipairs(items) do	
+				local itemRow = LCGroupLoot:CreateItemRow(itemID)
+				tabContent:AddChild(itemRow)
+			end	
+			lootListFrame:AddChild(tabContent)
+		end)
+		
+		tabRef[#tabRef+1] = bossLabel
+		tabList:AddChild(bossLabel)
+	end
+	
+	bossListFrame:AddChild(tabList)
+	bottomContainer:AddChild(lootListFrame)
+	bottomContainer:AddChild(bossListFrame)
+	
+	UIConfig:AddChild(bottomContainer)
 end
 
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
