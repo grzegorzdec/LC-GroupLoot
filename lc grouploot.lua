@@ -315,6 +315,18 @@ local options = {
 local lootTable = {
 }
 
+local selectedTab = ""
+local tabRef = {}
+
+function LCGroupLoot:PreloadItemLinks()
+	for bossName, items in pairs(bossy) do
+		for i, itemId in ipairs(items) do
+				local itemIdNumber = tonumber(itemId)
+				local _= GetItemInfo(itemIdNumber)
+		end
+	end
+end
+
 function LCGroupLoot:OnInitialize() 
 	self.db = AceDB:New("LCGroupLootDB", defaults, true)
 
@@ -330,6 +342,8 @@ function LCGroupLoot:OnInitialize()
 	end)
 	
 	lootTable = self.db.profile.lootTable
+	
+	LCGroupLoot:PreloadItemLinks()
 end
 
 function LCGroupLoot:OnEnable()
@@ -368,26 +382,12 @@ function LCGroupLoot:IsPlayerRaidLeader()
 end
 
 function LCGroupLoot:RollOnLoot(rollId)
-	--RollOnLoot(rollId, 0)
     local itemLink = GetLootRollItemLink(rollId)
-   -- local a, itemLink, b, c, d, e, f, g, h, i, j = GetItemInfo(itemName)
-	--print(itemLink)
-	--local itemId = tonumber(string.sub(itemLink, string.find(itemLink, "item:%d+:%d+:%d+:%d+")):match("%d+"))
-	--  "|cff1eff00|Hitem:36682::::::-8:1301479470:80:::::::::|h[Seduced Blade of the Whale]|h|r"
---(*tem
-	--local itemId = GetItemInfo(itemLink)
+
 	local itemString = string.match(itemLink, "item:(%d+)")
     local itemId = tonumber(itemString)
 
-	--if itemId ~= nil then
-	--	print("Identyfikator przedmiotu " .. itemLink .. " to " .. itemId)
-	--else
-	--	print("Nie znaleziono przedmiotu o nazwie " .. itemLink)
-	--end
-
-	--local itemID = itemLink.itemId
 	if LCGroupLoot:IsItemInLootTable(itemId) then
-		--if playerName == LC then
 		if LCGroupLoot:IsPlayerRaidLeader() then
 			--print(itemLink .. " - need")
 			RollOnLoot(rollId, 1) -- "Need"
@@ -425,7 +425,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 
 	local itemGroup = AceGUI:Create("SimpleGroup")
 	itemGroup:SetLayout("Flow")
-	itemGroup:SetFullWidth(true)
+	itemGroup:SetWidth(350)
 
 	--itemGroup.frame:SetBackdrop(nil)
 
@@ -446,7 +446,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemLabel:SetText(itemLink)
 	itemLabel:SetFontObject(GameFontHighlight)
 	itemLabel:SetJustifyH("LEFT")
-	itemLabel:SetWidth(230)
+	itemLabel:SetWidth(200)
 	
 	-- local ilvlLabel = AceGUI:Create("Label")
 	-- ilvlLabel:SetText("["..itemLevel.."]")
@@ -463,6 +463,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 	local itemCheckbox = AceGUI:Create("CheckBox")
 	itemCheckbox:SetLabel("LC")
 	itemCheckbox:SetValue(checked)
+	itemCheckbox:SetWidth(50)
 	itemCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
 		lootTable[itemIdNumber] = value
 	end)
@@ -548,43 +549,69 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	UIConfig:AddChild(saveSettingsButton)
 	UIConfig:AddChild(masteLooterLabel)
 	UIConfig:AddChild(masterLooterET)
-
 	
-	-- Tworzymy zakładki
-	local tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs(tabs)
-	tabGroup:SetLayout("Flow")
-	tabGroup:SetFullWidth(true)
-	tabGroup:SetFullHeight(true)
-	tabGroup:SetCallback("OnGroupSelected", function(widget, event, group)
-		local items = bossy[group]
-		widget:ReleaseChildren()
-		--print(group)
-		local tabContent = AceGUI:Create("ScrollFrame")
-		tabContent:SetLayout("List")
-		tabContent:SetFullWidth(true)
-		for i, itemID in ipairs(items) do	
-			local itemRow = LCGroupLoot:CreateItemRow(itemID)
-			tabContent:AddChild(itemRow)
-		end	
-		widget:AddChild(tabContent)
-    end)
-
-	UIConfig:AddChild(tabGroup)
-	tabGroup:SelectTab(1)
+	local bottomContainer = AceGUI:Create("SimpleGroup")
+	bottomContainer:SetLayout("Flow")
+	bottomContainer:SetFullWidth(true)	
+	bottomContainer:SetFullHeight(true)
+	
+	local lootListFrame = AceGUI:Create("InlineGroup")
+	lootListFrame:SetLayout("Flow")
+	lootListFrame:SetWidth(400)	
+	lootListFrame:SetFullHeight(true)
+	
+	local bossListFrame = AceGUI:Create("InlineGroup")
+	bossListFrame:SetLayout("Flow")
+	bossListFrame:SetWidth(160)	
+	bossListFrame:SetFullHeight(true)
+	
+	local tabList = AceGUI:Create("ScrollFrame")
+	tabList:SetFullWidth(true)
+	tabList:SetLayout("List")
+	for bossName, items in pairs(bossy) do
+		local bossLabel = AceGUI:Create("InteractiveLabel")
+		bossLabel:SetText(bossName)
+		bossLabel:SetFontObject(GameFontHighlightSmall)
+		bossLabel:SetColor(1,1,1)
+		bossLabel:SetJustifyH("Left")
+		bossLabel:SetWidth(150)
+		bossLabel:SetCallback("OnClick", function(widget,event,group)
+			selectedTab = bossName
+			
+			for i, tab in ipairs(tabRef) do 
+				tab:SetColor(1,1,1)
+			end
+			widget:SetColor(0.67,0.83,0.45)
+			lootListFrame:ReleaseChildren()
+			lootListFrame:SetTitle(bossName)
+			local items = bossy[selectedTab]
+			local tabContent = AceGUI:Create("ScrollFrame")
+			tabContent:SetLayout("List")
+			tabContent:SetFullWidth(true)
+			for i, itemID in ipairs(items) do	
+				local itemRow = LCGroupLoot:CreateItemRow(itemID)
+				tabContent:AddChild(itemRow)
+			end	
+			lootListFrame:AddChild(tabContent)
+		end)
+		
+		tabRef[#tabRef+1] = bossLabel
+		tabList:AddChild(bossLabel)
+	end
+	
+	bossListFrame:AddChild(tabList)
+	bottomContainer:AddChild(lootListFrame)
+	bottomContainer:AddChild(bossListFrame)
+	
+	UIConfig:AddChild(bottomContainer)
 end
 
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
     local _, _, encodedData = string.find(message, "LCGroupLoot_UPDATE:(.+)")
     local success, newLootTable = AceSerializer:Deserialize(encodedData)
-	--print("HandleLootTableUpdate ")
     if success then
-		--print("new loot table")
-		--tprint(newLootTable)
         lootTable = newLootTable
         self.db.profile.lootTable = lootTable
-		--print("Ustawienia zostały pobrane.")
-		--tprint(lootTable,2)
     end
 end
 
