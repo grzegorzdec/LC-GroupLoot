@@ -368,35 +368,21 @@ function LCGroupLoot:IsPlayerRaidLeader()
 end
 
 function LCGroupLoot:RollOnLoot(rollId)
-	--RollOnLoot(rollId, 0)
     local itemLink = GetLootRollItemLink(rollId)
-   -- local a, itemLink, b, c, d, e, f, g, h, i, j = GetItemInfo(itemName)
-	--print(itemLink)
-	--local itemId = tonumber(string.sub(itemLink, string.find(itemLink, "item:%d+:%d+:%d+:%d+")):match("%d+"))
-	--  "|cff1eff00|Hitem:36682::::::-8:1301479470:80:::::::::|h[Seduced Blade of the Whale]|h|r"
---(*tem
-	--local itemId = GetItemInfo(itemLink)
+
 	local itemString = string.match(itemLink, "item:(%d+)")
     local itemId = tonumber(itemString)
 
-	--if itemId ~= nil then
-	--	print("Identyfikator przedmiotu " .. itemLink .. " to " .. itemId)
-	--else
-	--	print("Nie znaleziono przedmiotu o nazwie " .. itemLink)
-	--end
-
-	--local itemID = itemLink.itemId
 	if LCGroupLoot:IsItemInLootTable(itemId) then
-		--if playerName == LC then
 		if LCGroupLoot:IsPlayerRaidLeader() then
-			--print(itemLink .. " - need")
+			print(itemLink .. " - need")
 			RollOnLoot(rollId, 1) -- "Need"
 		else
 			RollOnLoot(rollId, 0) -- "Pass"
-			--print(itemLink .. " - pass")
+			print(itemLink .. " - pass")
 		end
 	else 
-		--print(itemLink .. " - not in LC table")
+		print(itemLink .. " - not in LC table")
 	end
 end
 
