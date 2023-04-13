@@ -315,6 +315,15 @@ local options = {
 local lootTable = {
 }
 
+function LCGroupLoot:PreloadItemLinks()
+	for bossName, items in pairs(bossy) do
+		for i, itemId in ipairs(items) do
+				local itemIdNumber = tonumber(itemId)
+				local _= GetItemInfo(itemIdNumber)
+		end
+	end
+end
+
 function LCGroupLoot:OnInitialize() 
 	self.db = AceDB:New("LCGroupLootDB", defaults, true)
 
@@ -330,6 +339,8 @@ function LCGroupLoot:OnInitialize()
 	end)
 	
 	lootTable = self.db.profile.lootTable
+	
+	LCGroupLoot:PreloadItemLinks()
 end
 
 function LCGroupLoot:OnEnable()
@@ -375,11 +386,11 @@ function LCGroupLoot:RollOnLoot(rollId)
 
 	if LCGroupLoot:IsItemInLootTable(itemId) then
 		if LCGroupLoot:IsPlayerRaidLeader() then
-			print(itemLink .. " - need")
+			--print(itemLink .. " - need")
 			RollOnLoot(rollId, 1) -- "Need"
 		else
 			RollOnLoot(rollId, 0) -- "Pass"
-			print(itemLink .. " - pass")
+			--print(itemLink .. " - pass")
 		end
 	else 
 		print(itemLink .. " - not in LC table")
@@ -563,14 +574,9 @@ end
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
     local _, _, encodedData = string.find(message, "LCGroupLoot_UPDATE:(.+)")
     local success, newLootTable = AceSerializer:Deserialize(encodedData)
-	--print("HandleLootTableUpdate ")
     if success then
-		--print("new loot table")
-		--tprint(newLootTable)
         lootTable = newLootTable
         self.db.profile.lootTable = lootTable
-		--print("Ustawienia zostały pobrane.")
-		--tprint(lootTable,2)
     end
 end
 
