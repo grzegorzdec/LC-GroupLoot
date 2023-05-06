@@ -1499,25 +1499,27 @@ function LCGroupLoot:IsPlayerML()
 end
  
 function LCGroupLoot:RollOnLoot(rollId)
-    local itemLink = GetLootRollItemLink(rollId)
+	if self.db.profile.enable then 
+		local itemLink = GetLootRollItemLink(rollId)
 
-	local itemString = string.match(itemLink, "item:(%d+)")
-    local itemId = tonumber(itemString)
+		local itemString = string.match(itemLink, "item:(%d+)")
+		local itemId = tonumber(itemString)
 
-	if LCGroupLoot:IsItemInLootTable(itemId) then
-		if LCGroupLoot:IsPlayerML() and self.db.profile.rwLcItems then
-			SendChatMessage("LC ITEM: "..itemLink, "RW")
+		if LCGroupLoot:IsItemInLootTable(itemId) then
+			if LCGroupLoot:IsPlayerML() and self.db.profile.rwLcItems then
+				SendChatMessage("LC ITEM: "..itemLink, "RW")
+			end
+			if LCGroupLoot:IsPlayerML() then
+				--print(itemLink .. " - need")
+				RollOnLoot(rollId, 1) -- "Need"
+			else
+				RollOnLoot(rollId, 0) -- "Pass"
+				--print(itemLink .. " - pass")
+			end
+		else 
+			--print(itemLink .. " - not in LC table")
 		end
-		if LCGroupLoot:IsPlayerML() then
-			print(itemLink .. " - need")
-			--RollOnLoot(rollId, 1) -- "Need"
-		else
-			--RollOnLoot(rollId, 0) -- "Pass"
-			print(itemLink .. " - pass")
-		end
-	else 
-		--print(itemLink .. " - not in LC table")
-	end
+	end	
 end
 
 function LCGroupLoot:CreateItemRow(itemId)
@@ -1713,6 +1715,15 @@ function LCGroupLoot:CreateLCGroupLootUI()
 		bossListFrame:ReleaseChildren()
 		bossListFrame:AddChild(LCGroupLoot:CreateBossList(lootListFrame))		
 	end)
+	
+	local enableCheckbox = AceGUI:Create("CheckBox")
+	enableCheckbox:SetLabel("Enable")
+	enableCheckbox:SetValue(self.db.profile.enable)
+	enableCheckbox:SetWidth(100)
+	enableCheckbox:SetPoint("RIGHT", -10, 0)
+	enableCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
+		self.db.profile.enable = value
+	end)
 
 	local masterLooterDropdown = AceGUI:Create("Dropdown")
 	masterLooterDropdown:SetLabel("LC:")
@@ -1760,6 +1771,7 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	UIConfig:AddChild(sendUpdateButton)
 	UIConfig:AddChild(saveSettingsButton)
 	UIConfig:AddChild(raidDropdown)
+	UIConfig:AddChild(enableCheckbox)
 	
 	local bodyContainer = AceGUI:Create("SimpleGroup")
 	bodyContainer:SetLayout("Flow")
