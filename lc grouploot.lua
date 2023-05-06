@@ -15,8 +15,9 @@ local Serialize, Deserialize = AceSerializer.Serialize, AceSerializer.Deserializ
 local defaults = {
     profile = {
 		enable = false,
-		lc = "",
+		rwLcItems = false,
         lootTable = {
+			lc = ""
         },
     }
 }
@@ -311,7 +312,7 @@ local options = {
   handler = LCGroupLoot,
 }
 
--- Tablica zawierająca listę itemów
+-- Tablica zawierająca listę itemów LC
 local lootTable = {
 }
 
@@ -330,9 +331,6 @@ end
 function LCGroupLoot:OnInitialize() 
 	self.db = AceDB:New("LCGroupLootDB", defaults, true)
 
-	--local options = AceDBOptions:GetOptionsTable(db)
-	--AceConfig:RegisterOptionsTable("LCGroupLoot", options)
-	-- Rejestracja funkcji obsługi wiadomości w AceComm
 	AceComm:RegisterComm("LCGroupLootComm", function(prefix, message, distribution, sender)
 		LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
 	end)	
@@ -349,18 +347,38 @@ end
 function LCGroupLoot:OnEnable()
 	self:RegisterChatCommand("lcgl", "SlashProcessor")
 	self:RegisterChatCommand("LCGroupLoot", "CreateLCGroupLootUI")
-	--RegisterEvent("CHAT_MSG_ADDON", "OnEvent")
-	--self:SetScript("OnEvent", OnEvent)
+
 end
 
--- Tworzymy funkcję do sprawdzania, czy przedmiot znajduje się w tabeli łupu
 function LCGroupLoot:IsItemInLootTable(itemID)
     return self.db.profile.lootTable[itemID] == true
 end
 
--- Tworzymy funkcję do ustawiania wartości przedmiotu w tabeli łupu
 function LCGroupLoot:SetLootTableValue(itemID, value)
     db.profile.lootTable[itemID] = value
+end
+
+--todo: combine below functions
+function LCGroupLoot:IsPlayerRaidLeaderOrML()
+    local playerName = UnitName("player")
+    local raidLeaderName
+
+	if self.db.profile.lootTable.lc == playerName then
+		return true
+	end
+
+    for i = 1, 40 do
+        local name, rank = GetRaidRosterInfo(i)
+        if rank == 2 then
+            raidLeaderName = name
+        end
+        
+        if playerName == raidLeaderName then
+            return true
+        end
+    end
+
+    return false
 end
 
 function LCGroupLoot:IsPlayerRaidLeader()
@@ -381,6 +399,31 @@ function LCGroupLoot:IsPlayerRaidLeader()
     return false
 end
 
+function LCGroupLoot:IsPlayerML()
+ local playerName = UnitName("player")
+    local raidLeaderName
+
+	if self.db.profile.lootTable.lc then 
+		if self.db.profile.lootTable.lc == playerName then
+			return true
+		end
+		return false
+	end
+
+    for i = 1, 40 do
+        local name, rank = GetRaidRosterInfo(i)
+        if rank == 2 then
+            raidLeaderName = name
+        end
+        
+        if playerName == raidLeaderName then
+            return true
+        end
+    end
+
+    return false
+end
+ 
 function LCGroupLoot:RollOnLoot(rollId)
     local itemLink = GetLootRollItemLink(rollId)
 
@@ -388,46 +431,28 @@ function LCGroupLoot:RollOnLoot(rollId)
     local itemId = tonumber(itemString)
 
 	if LCGroupLoot:IsItemInLootTable(itemId) then
-		if LCGroupLoot:IsPlayerRaidLeader() then
-			--print(itemLink .. " - need")
-			RollOnLoot(rollId, 1) -- "Need"
+		if LCGroupLoot:IsPlayerML() and self.db.profile.rwLcItems then
+			SendChatMessage("LC ITEM: "..itemLink, "RW")
+		end
+		if LCGroupLoot:IsPlayerML() then
+			print(itemLink .. " - need")
+			--RollOnLoot(rollId, 1) -- "Need"
 		else
-			RollOnLoot(rollId, 0) -- "Pass"
-			--print(itemLink .. " - pass")
+			--RollOnLoot(rollId, 0) -- "Pass"
+			print(itemLink .. " - pass")
 		end
 	else 
 		--print(itemLink .. " - not in LC table")
 	end
 end
 
-function LCGroupLoot:AreAllItemInfosAvailable()
-    for itemID, _ in pairs(lootTable) do
-        if not GetItemInfo(itemID) then
-            return false
-        end
-    end
-    return true
-end
-
-function LCGroupLoot:TryCreatingLCGroupLootUI()
-    if AreAllItemInfosAvailable() then
-        CreateLCGroupLootUI()
-    else
-        -- Odczekaj 1 sekundę i spróbuj ponownie
-        C_Timer.After(1, TryCreatingLCGroupLootUI)
-    end
-end
-
 function LCGroupLoot:CreateItemRow(itemId)
 	local itemIdNumber = tonumber(itemId)
-	--print(itemIdNumber)
 	local itemName, itemLink, _, itemLevel, _, _, _, _, _, itemTexture = GetItemInfo(itemIdNumber)
 
 	local itemGroup = AceGUI:Create("SimpleGroup")
 	itemGroup:SetLayout("Flow")
 	itemGroup:SetWidth(350)
-
-	--itemGroup.frame:SetBackdrop(nil)
 
 	local itemIcon = AceGUI:Create("Icon")
 	itemIcon:SetImage(itemTexture)
@@ -447,12 +472,6 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemLabel:SetFontObject(GameFontHighlight)
 	itemLabel:SetJustifyH("LEFT")
 	itemLabel:SetWidth(200)
-	
-	-- local ilvlLabel = AceGUI:Create("Label")
-	-- ilvlLabel:SetText("["..itemLevel.."]")
-	-- ilvlLabel:SetFontObject(GameFontHighlight)
-	-- ilvlLabel:SetJustifyH("LEFT")
-	-- ilvlLabel:SetWidth(30)
 
 	local checked = lootTable[itemIdNumber]
 	
@@ -468,14 +487,13 @@ function LCGroupLoot:CreateItemRow(itemId)
 		lootTable[itemIdNumber] = value
 	end)
 
-	if LCGroupLoot:IsPlayerRaidLeader() then
+	if LCGroupLoot:IsPlayerRaidLeaderOrML() then
 		itemCheckbox:SetDisabled(false)
 	else
 		itemCheckbox:SetDisabled(true)
 	end
 	
 	itemGroup:AddChild(itemIcon)
-	--itemGroup:AddChild(ilvlLabel)
 	itemGroup:AddChild(itemLabel)
 	itemGroup:AddChild(itemCheckbox)
 
@@ -484,13 +502,6 @@ end
 
 function LCGroupLoot:SendLootTableUpdate()
     local message = "LCGroupLoot_UPDATE:" .. AceSerializer:Serialize(lootTable)
-	--print(message)
-	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
-end
-
-function LCGroupLoot:SendLCUpdate()
-    local message = "LC_UPDATE:" .. AceSerializer:Serialize(self.db.profile.LC)
-	--print(message)
 	AceComm:SendCommMessage("LCGroupLootComm", message, "RAID", nil, "NORMAL")
 end
 
@@ -499,13 +510,8 @@ function LCGroupLoot:CreateLCGroupLootUI()
     UIConfig:SetTitle("LC GroupLoot")
     UIConfig:SetLayout("Flow")
 	UIConfig:SetWidth(600)
+	UIConfig:SetHeight(500)
 
-    -- lista zakładek
-	local tabs = {} 
-	for bossName, items in pairs(bossy) do
-		table.insert(tabs, {text = bossName, value = bossName})
-	end
-	
 	local sendUpdateButton = AceGUI:Create("Button")
 	sendUpdateButton:SetText("Send Update")
 	sendUpdateButton:SetWidth(150)
@@ -518,52 +524,82 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	saveSettingsButton:SetWidth(150)
 	saveSettingsButton:SetCallback("OnClick", function()
 		self.db.profile.lootTable = lootTable
-		--tprint(lootTable,2)
+	end)
+
+	local masterLooterDropdown = AceGUI:Create("Dropdown")
+	masterLooterDropdown:SetLabel("LC:")
+	masterLooterDropdown:SetMultiselect(false)
+	masterLooterDropdown:SetWidth(150)
+	masterLooterDropdown:SetFullWidth(false)
+	masterLooterDropdown:SetText(self.db.profile.lootTable.lc)
+	if IsInRaid() then 
+		for i = 1, MAX_RAID_MEMBERS do
+			local name = GetRaidRosterInfo(i)
+			if name then
+				masterLooterDropdown:AddItem(name,name) 
+			end
+		end
+	end
+	masterLooterDropdown:SetCallback("OnValueChanged", function(widget,event,item)
+		self.db.profile.lootTable.lc = item
 	end)
 	
-	local masteLooterLabel = AceGUI:Create("Label")
-	masteLooterLabel:SetText("LC:")
-	masteLooterLabel:SetFontObject(GameFontHighlight)
-	masteLooterLabel:SetJustifyH("Right")
-	masteLooterLabel:SetWidth(50)
-	
-	local masterLooterET = AceGUI:Create("EditBox")
-	masterLooterET:SetWidth(150)
-	masterLooterET:SetText(self.db.profile.lc)
-	masterLooterET:SetCallback("OnTextChanged", function(widget, event, text)
-		self.db.profile.lc = text
+	local rwCheckbox = AceGUI:Create("CheckBox")
+	rwCheckbox:SetLabel("/RW LC items")
+	rwCheckbox:SetValue(self.db.profile.rwLcItems)
+	rwCheckbox:SetWidth(150)
+	rwCheckbox:SetPoint("RIGHT", -10, 0)
+	rwCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
+		self.db.profile.rwLcItems = value
 	end)
+
+	if LCGroupLoot:IsPlayerRaidLeaderOrML() then
+		rwCheckbox:SetDisabled(false)
+	else
+		rwCheckbox:SetDisabled(true)
+	end
 
 	if LCGroupLoot:IsPlayerRaidLeader() then
 		sendUpdateButton:SetDisabled(false)
 		saveSettingsButton:SetDisabled(false)
-		masterLooterET:SetDisabled(true)
+		masterLooterDropdown:SetDisabled(false)
 	else
 		sendUpdateButton:SetDisabled(true)
 		saveSettingsButton:SetDisabled(true)
-		masterLooterET:SetDisabled(true)
+		masterLooterDropdown:SetDisabled(true)
 	end
 	
-
 	UIConfig:AddChild(sendUpdateButton)
 	UIConfig:AddChild(saveSettingsButton)
-	UIConfig:AddChild(masteLooterLabel)
-	UIConfig:AddChild(masterLooterET)
 	
-	local bottomContainer = AceGUI:Create("SimpleGroup")
-	bottomContainer:SetLayout("Flow")
-	bottomContainer:SetFullWidth(true)	
-	bottomContainer:SetFullHeight(true)
+	local bodyContainer = AceGUI:Create("SimpleGroup")
+	bodyContainer:SetLayout("Flow")
+	bodyContainer:SetFullWidth(true)	
+	bodyContainer:SetFullHeight(true)
+	--bodyContainer:SetHeight(300)
+	bodyContainer:SetPoint("TOP")
 	
 	local lootListFrame = AceGUI:Create("InlineGroup")
 	lootListFrame:SetLayout("Flow")
 	lootListFrame:SetWidth(400)	
 	lootListFrame:SetFullHeight(true)
+	lootListFrame:SetPoint("TOP")
 	
-	local bossListFrame = AceGUI:Create("InlineGroup")
-	bossListFrame:SetLayout("Flow")
+	local bossListFrame = AceGUI:Create("InlineGroup", bodyContainer)
+	bossListFrame:SetLayout("Fill")
 	bossListFrame:SetWidth(160)	
 	bossListFrame:SetFullHeight(true)
+	--bossListFrame:SetHeight(300)
+	bossListFrame:SetPoint("TOP")
+
+	local bottomContainer = AceGUI:Create("InlineGroup")
+	bottomContainer:SetLayout("Flow")
+	bottomContainer:SetFullWidth(true)	
+	bottomContainer:SetHeight(60)
+	bottomContainer:SetPoint("TOP")
+	
+	bottomContainer:AddChild(masterLooterDropdown)
+	bottomContainer:AddChild(rwCheckbox)
 	
 	local tabList = AceGUI:Create("ScrollFrame")
 	tabList:SetFullWidth(true)
@@ -588,6 +624,7 @@ function LCGroupLoot:CreateLCGroupLootUI()
 			local tabContent = AceGUI:Create("ScrollFrame")
 			tabContent:SetLayout("List")
 			tabContent:SetFullWidth(true)
+			tabContent:SetPoint("TOP")
 			for i, itemID in ipairs(items) do	
 				local itemRow = LCGroupLoot:CreateItemRow(itemID)
 				tabContent:AddChild(itemRow)
@@ -600,10 +637,15 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	end
 	
 	bossListFrame:AddChild(tabList)
-	bottomContainer:AddChild(lootListFrame)
-	bottomContainer:AddChild(bossListFrame)
+	--rightContainer:AddChild(bossListFrame)
+	--rightContainer:AddChild(settingsFrame)
+
+	bodyContainer:AddChild(lootListFrame)
+	bodyContainer:AddChild(bossListFrame)
 	
 	UIConfig:AddChild(bottomContainer)
+	UIConfig:AddChild(bodyContainer)
+
 end
 
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
@@ -616,7 +658,6 @@ function LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
 function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
-	--self.print("on event")
     if event == "CHAT_MSG_ADDON" and prefix == "LCGroupLoot" then
         HandleLootTableUpdate(sender, message)
     end
@@ -624,7 +665,6 @@ function LCGroupLoot:OnEvent(event, prefix, message, channel, sender)
 end
 
 function LCGroupLoot:OnLCGroupLootCommReceived(prefix, message, distribution, sender)
-	--print("OnLCGroupLootCommReceived")
 	LCGroupLoot:HandleLootTableUpdate(sender, message)
 end
 
@@ -639,8 +679,6 @@ function LCGroupLoot:ShowTooltip(itemID)
     tooltip:Show()
 end
 
--- Print contents of `tbl`, with indentation.
--- `indent` sets the initial level of indentation.
 function tprint (tbl, indent)
   if not indent then indent = 0 end
   for k, v in pairs(tbl) do
