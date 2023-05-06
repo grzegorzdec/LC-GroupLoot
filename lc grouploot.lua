@@ -15,6 +15,7 @@ local Serialize, Deserialize = AceSerializer.Serialize, AceSerializer.Deserializ
 local defaults = {
     profile = {
 		enable = false,
+		rwLcItems = false,
         lootTable = {
 			lc = ""
         },
@@ -430,12 +431,15 @@ function LCGroupLoot:RollOnLoot(rollId)
     local itemId = tonumber(itemString)
 
 	if LCGroupLoot:IsItemInLootTable(itemId) then
+		if LCGroupLoot:IsPlayerML() and self.db.profile.rwLcItems then
+			SendChatMessage("LC ITEM: "..itemLink, "RW")
+		end
 		if LCGroupLoot:IsPlayerML() then
-			--print(itemLink .. " - need")
-			RollOnLoot(rollId, 1) -- "Need"
+			print(itemLink .. " - need")
+			--RollOnLoot(rollId, 1) -- "Need"
 		else
-			RollOnLoot(rollId, 0) -- "Pass"
-			--print(itemLink .. " - pass")
+			--RollOnLoot(rollId, 0) -- "Pass"
+			print(itemLink .. " - pass")
 		end
 	else 
 		--print(itemLink .. " - not in LC table")
@@ -506,6 +510,7 @@ function LCGroupLoot:CreateLCGroupLootUI()
     UIConfig:SetTitle("LC GroupLoot")
     UIConfig:SetLayout("Flow")
 	UIConfig:SetWidth(600)
+	UIConfig:SetHeight(500)
 
 	local sendUpdateButton = AceGUI:Create("Button")
 	sendUpdateButton:SetText("Send Update")
@@ -524,6 +529,8 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	local masterLooterDropdown = AceGUI:Create("Dropdown")
 	masterLooterDropdown:SetLabel("LC:")
 	masterLooterDropdown:SetMultiselect(false)
+	masterLooterDropdown:SetWidth(150)
+	masterLooterDropdown:SetFullWidth(false)
 	masterLooterDropdown:SetText(self.db.profile.lootTable.lc)
 	if IsInRaid() then 
 		for i = 1, MAX_RAID_MEMBERS do
@@ -536,11 +543,26 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	masterLooterDropdown:SetCallback("OnValueChanged", function(widget,event,item)
 		self.db.profile.lootTable.lc = item
 	end)
+	
+	local rwCheckbox = AceGUI:Create("CheckBox")
+	rwCheckbox:SetLabel("/RW LC items")
+	rwCheckbox:SetValue(self.db.profile.rwLcItems)
+	rwCheckbox:SetWidth(150)
+	rwCheckbox:SetPoint("RIGHT", -10, 0)
+	rwCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
+		self.db.profile.rwLcItems = value
+	end)
+
+	if LCGroupLoot:IsPlayerRaidLeaderOrML() then
+		rwCheckbox:SetDisabled(false)
+	else
+		rwCheckbox:SetDisabled(true)
+	end
 
 	if LCGroupLoot:IsPlayerRaidLeader() then
 		sendUpdateButton:SetDisabled(false)
 		saveSettingsButton:SetDisabled(false)
-		masterLooterET:SetDisabled(true)
+		masterLooterDropdown:SetDisabled(false)
 	else
 		sendUpdateButton:SetDisabled(true)
 		saveSettingsButton:SetDisabled(true)
@@ -549,22 +571,35 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	
 	UIConfig:AddChild(sendUpdateButton)
 	UIConfig:AddChild(saveSettingsButton)
-	UIConfig:AddChild(masterLooterDropdown)
 	
-	local bottomContainer = AceGUI:Create("SimpleGroup")
-	bottomContainer:SetLayout("Flow")
-	bottomContainer:SetFullWidth(true)	
-	bottomContainer:SetFullHeight(true)
+	local bodyContainer = AceGUI:Create("SimpleGroup")
+	bodyContainer:SetLayout("Flow")
+	bodyContainer:SetFullWidth(true)	
+	bodyContainer:SetFullHeight(true)
+	--bodyContainer:SetHeight(300)
+	bodyContainer:SetPoint("TOP")
 	
 	local lootListFrame = AceGUI:Create("InlineGroup")
 	lootListFrame:SetLayout("Flow")
 	lootListFrame:SetWidth(400)	
 	lootListFrame:SetFullHeight(true)
+	lootListFrame:SetPoint("TOP")
 	
-	local bossListFrame = AceGUI:Create("InlineGroup")
-	bossListFrame:SetLayout("Flow")
+	local bossListFrame = AceGUI:Create("InlineGroup", bodyContainer)
+	bossListFrame:SetLayout("Fill")
 	bossListFrame:SetWidth(160)	
 	bossListFrame:SetFullHeight(true)
+	--bossListFrame:SetHeight(300)
+	bossListFrame:SetPoint("TOP")
+
+	local bottomContainer = AceGUI:Create("InlineGroup")
+	bottomContainer:SetLayout("Flow")
+	bottomContainer:SetFullWidth(true)	
+	bottomContainer:SetHeight(60)
+	bottomContainer:SetPoint("TOP")
+	
+	bottomContainer:AddChild(masterLooterDropdown)
+	bottomContainer:AddChild(rwCheckbox)
 	
 	local tabList = AceGUI:Create("ScrollFrame")
 	tabList:SetFullWidth(true)
@@ -589,6 +624,7 @@ function LCGroupLoot:CreateLCGroupLootUI()
 			local tabContent = AceGUI:Create("ScrollFrame")
 			tabContent:SetLayout("List")
 			tabContent:SetFullWidth(true)
+			tabContent:SetPoint("TOP")
 			for i, itemID in ipairs(items) do	
 				local itemRow = LCGroupLoot:CreateItemRow(itemID)
 				tabContent:AddChild(itemRow)
@@ -601,10 +637,15 @@ function LCGroupLoot:CreateLCGroupLootUI()
 	end
 	
 	bossListFrame:AddChild(tabList)
-	bottomContainer:AddChild(lootListFrame)
-	bottomContainer:AddChild(bossListFrame)
+	--rightContainer:AddChild(bossListFrame)
+	--rightContainer:AddChild(settingsFrame)
+
+	bodyContainer:AddChild(lootListFrame)
+	bodyContainer:AddChild(bossListFrame)
 	
 	UIConfig:AddChild(bottomContainer)
+	UIConfig:AddChild(bodyContainer)
+
 end
 
 function LCGroupLoot:HandleLootTableUpdate(sender, message)
