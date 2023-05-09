@@ -1563,7 +1563,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 		lootTable[itemIdNumber] = value
 	end)
 
-	if LCGroupLoot:IsPlayerRaidLeaderOrML() then
+	if LCGroupLoot:IsPlayerRaidLeaderOrML() or not IsInRaid() then
 		itemCheckbox:SetDisabled(false)
 	else
 		itemCheckbox:SetDisabled(true)

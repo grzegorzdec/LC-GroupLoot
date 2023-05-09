@@ -13,6 +13,3 @@
 
 type /lcgl to make UI visible. 
 
-please note: in the current version only RL can make changes and then sync it with raid members.
-
-at this moment, support for Ulduar 25m only
