@@ -1,7 +1,7 @@
 ## Interface: 30401
 ## Title: LC GroupLoot
 ## Author: Magnificum
-## Version: 1.1.0
+## Version: 1.1.1
 ## SavedVariables: LCGroupLootDB
 
 Libs\LibStub\LibStub.lua

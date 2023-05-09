@@ -1507,14 +1507,14 @@ function LCGroupLoot:RollOnLoot(rollId)
 
 		if LCGroupLoot:IsItemInLootTable(itemId) then
 			if LCGroupLoot:IsPlayerML() and self.db.profile.rwLcItems then
-				SendChatMessage("LC ITEM: "..itemLink, "RW")
+				SendChatMessage("LC ITEM: "..itemLink, "RAID_WARNING")
 			end
 			if LCGroupLoot:IsPlayerML() then
-				--print(itemLink .. " - need")
-				RollOnLoot(rollId, 1) -- "Need"
+				--RollOnLoot(rollId, 1) -- "Need"
+				ConfirmLootRoll(rollId, 1)
 			else
 				RollOnLoot(rollId, 0) -- "Pass"
-				--print(itemLink .. " - pass")
+				print(itemLink .. " - pass")
 			end
 		else 
 			--print(itemLink .. " - not in LC table")
