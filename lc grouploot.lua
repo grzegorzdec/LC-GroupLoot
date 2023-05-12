@@ -19,6 +19,9 @@ local defaults = {
         lootTable = {
 			lc = ""
         },
+		personalLootTable = {
+			
+		}
     }
 }
 
@@ -50,7 +53,7 @@ local content = {
 		"The Twin Val'kyr",
 		"Anub'arak",
 		"Argent Crusade Tribute Chest"
-	},
+	}
 }
 
 local contentDifficulty = {
@@ -68,7 +71,7 @@ local contentDifficulty = {
 
 local contentOrder = {
 	[1] = "Ulduar",
-	[2] = "ToGC",
+	[2] = "ToGC"
 }
 
 local bossy = {
@@ -1353,8 +1356,7 @@ local bossy = {
 				47553,
 			}
 		), 
-	},
-	
+	}
 	-- ["Trash and Quest"] = {
 		-- 45038,
 		-- 43102
@@ -1426,6 +1428,10 @@ end
 
 function LCGroupLoot:IsItemInLootTable(itemID)
     return self.db.profile.lootTable[itemID] == true
+end
+
+function LCGroupLoot:IsItemInPersonalLootTable(itemID)
+    return self.db.profile.personalLootTable[itemID] == true
 end
 
 function LCGroupLoot:SetLootTableValue(itemID, value)
@@ -1510,14 +1516,15 @@ function LCGroupLoot:RollOnLoot(rollId)
 				SendChatMessage("LC ITEM: "..itemLink, "RAID_WARNING")
 			end
 			if LCGroupLoot:IsPlayerML() then
-				--RollOnLoot(rollId, 1) -- "Need"
 				ConfirmLootRoll(rollId, 1)
 			else
 				RollOnLoot(rollId, 0) -- "Pass"
-				print(itemLink .. " - pass")
 			end
 		else 
-			--print(itemLink .. " - not in LC table")
+			if LCGroupLoot:IsItemInPersonalLootTable(itemId) then
+				ConfirmLootRoll(rollId, 1)
+				print("Auto need on ".. itemLink)
+			end
 		end
 	end	
 end
@@ -1562,6 +1569,15 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
 		lootTable[itemIdNumber] = value
 	end)
+	
+	local needCheckbox = AceGUI:Create("CheckBox")
+	needCheckbox:SetLabel("Need")
+	needCheckbox:SetDisabled(LCGroupLoot:IsItemInLootTable(itemIdNumber))
+	needCheckbox:SetValue(LCGroupLoot:IsItemInPersonalLootTable(itemIdNumber))
+	needCheckbox:SetWidth(50)
+	needCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
+		self.db.profile.personalLootTable[itemIdNumber] = value
+	end)
 
 	if LCGroupLoot:IsPlayerRaidLeaderOrML() or not IsInRaid() then
 		itemCheckbox:SetDisabled(false)
@@ -1572,6 +1588,7 @@ function LCGroupLoot:CreateItemRow(itemId)
 	itemGroup:AddChild(itemIcon)
 	itemGroup:AddChild(itemLabel)
 	itemGroup:AddChild(itemCheckbox)
+	itemGroup:AddChild(needCheckbox)
 
     return itemGroup
 end
